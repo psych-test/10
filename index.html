@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>심리 진단 시스템 (사용자용)</title>
+    <style>
+        :root { --primary: #3730a3; --bg: #f8fafc; --white: #ffffff; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, 'Apple SD Gothic Neo', sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background: var(--bg); color: #1e293b; padding: 20px; line-height: 1.6; }
+        .container { max-width: 600px; margin: 0 auto; background: var(--white); padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        h2 { color: var(--primary); margin-bottom: 20px; text-align: center; }
+        .step { display: none; }
+        .step.active { display: block; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.9em; }
+        input[type="text"], input[type="tel"], input[type="number"], select { width: 100%; padding: 14px; border: 1.5px solid #e2e8f0; border-radius: 12px; font-size: 16px; outline: none; }
+        .q-card { background: #f1f5f9; padding: 20px; border-radius: 15px; margin-bottom: 20px; }
+        .q-text { font-weight: 600; margin-bottom: 15px; font-size: 1.05em; word-break: keep-all; }
+        .options { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+        .options label { display: flex; flex-direction: column; align-items: center; font-size: 0.75em; color: #64748b; cursor: pointer; }
+        .options input { width: 24px; height: 24px; margin-bottom: 8px; cursor: pointer; }
+        .btn { width: 100%; padding: 18px; background: var(--primary); color: white; border: none; border-radius: 12px; font-weight: 600; font-size: 16px; cursor: pointer; margin-top: 10px; touch-action: manipulation; }
+        #progress { height: 6px; background: #e2e8f0; border-radius: 3px; margin-bottom: 25px; overflow: hidden; }
+        #progress-bar { height: 100%; background: var(--primary); width: 0%; transition: 0.3s; }
+        textarea { width: 100%; height: 120px; padding: 15px; border-radius: 12px; border: 1.5px solid #e2e8f0; margin-top: 10px; font-size: 14px; background: #f8fafc; font-family: monospace; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div id="progress"><div id="progress-bar"></div></div>
+    
+    <div id="step1" class="step active">
+        <h2>심리 진단 시작</h2>
+        <div class="input-group"><label>성함</label><input type="text" id="u_name"></div>
+        <div class="input-group"><label>연령</label><input type="number" id="u_age"></div>
+        <div class="input-group"><label>성별</label><select id="u_gender"><option value="남성">남성</option><option value="여성">여성</option></select></div>
+        <div class="input-group"><label>연락처 (선택)</label><input type="tel" id="u_tel" placeholder="010-0000-0000"></div>
+        <div class="input-group"><label>검사 유형 선택</label>
+            <select id="exam_mode">
+                <option value="50">에고그램 (50문항)</option>
+                <option value="40" selected>인생태도 (40문항)</option>
+            </select>
+        </div>
+        <button class="btn" id="startBtn">검사 시작하기</button>
+    </div>
+
+    <div id="step2" class="step">
+        <div id="questionContainer"></div>
+        <button class="btn" id="nextBtn">다음 문항</button>
+    </div>
+
+    <div id="step3" class="step">
+        <h2>검사 완료</h2>
+        <p style="text-align:center; margin-bottom:15px; color:#64748b;">아래의 분석 코드를 복사하여<br>상담사에게 전달해 주세요.</p>
+        <textarea id="resCode" readonly onclick="this.select()"></textarea>
+        <button class="btn" id="copyBtn">코드 복사하기</button>
+        <p id="copyMsg" style="text-align:center; color:green; font-size:0.85em; margin-top:10px; display:none;">코드가 복사되었습니다!</p>
+    </div>
+</div>
+
+<script>
+    // 문항 데이터 생략 (기존과 동일하므로 로직에만 집중)
+    const questions50 = [
+        "나는 무엇이든 흑백을 분명히 가리는 편이다", "사람들에게 동정심을 많이 느낀다", "사물을 객관적으로 보려고 노력한다", "농담을 잘하고 잘 웃는다", "남의 눈치를 많이 보는 편이다",
+        "잘못된 일은 엄격하게 꾸짖는다", "남을 돌보는 것을 좋아한다", "매사에 계산이 빠르고 정확하다", "흥미로운 일에는 금방 빠져든다", "자신의 감정을 억제하는 편이다",
+        "시간이나 규칙을 엄격히 지킨다", "친절하고 상냥하다는 말을 듣는다", "결론을 내리기 전에 사실을 확인한다", "유머 감각이 풍부하다는 소리를 듣는다", "부탁을 받으면 거절하지 못한다",
+        "도덕이나 윤리를 중요하게 생각한다", "어려운 사람을 보면 그냥 지나치지 못한다", "현실적인 계획을 세워 일을 추진한다", "자유분방하고 창의적인 아이디어가 많다", "남의 의견에 잘 따르는 편이다",
+        "권위적이라는 말을 가끔 듣는다", "남을 칭찬하는 데 아낌이 없다", "감정에 치우치지 않고 판단한다", "호기심이 많고 모험심이 강하다", "자신감이 부족하고 위축될 때가 있다",
+        "예의 범절을 따지는 편이다", "주변 사람들을 잘 챙긴다", "논리적으로 조리 있게 말한다", "노는 것을 좋아하고 즐겁게 산다", "상대방의 기분을 맞추려 노력한다",
+        "책임감이 강하고 완고한 편이다", "배려심이 깊고 온화하다", "효율성과 실용성을 중시한다", "표정이 밝고 감정 표현이 풍부하다", "손해를 보더라도 참는 편이다",
+        "부정부패를 보면 참지 못한다", "부성애나 모성애가 강한 편이다", "상황 판단이 빠르고 냉철하다", "적극적이고 활동적이다", "남에게 비난받을까 봐 걱정한다",
+        "기준에 어긋나면 단호하게 말한다", "남을 위로하고 격려하는 일을 잘한다", "데이터나 증거를 중요하게 생각한다", "개성이 뚜렷하고 자기주장이 강하다", "쉽게 사과하거나 양보하는 편이다",
+        "편견이 심하다는 소리를 듣는다", "과보호하려는 경향이 있다", "기계처럼 냉정하게 일한다는 말을 듣는다", "충동적으로 행동할 때가 있다", "자기주장을 잘못하고 순응한다"
+    ];
+
+    const questions40 = [
+        "상대방의 사소한 실수를 용납하기 어렵다", "나는 대체로 사람들을 믿는 편이다", "나에게는 남들이 모르는 장점이 많다", "가끔 내가 아무 쓸모 없는 존재처럼 느껴진다",
+        "사람들은 이기적이라 늘 조심해야 한다", "사람들과 함께 있으면 마음이 편안하다", "나는 꽤 능력 있는 사람이라고 생각한다", "다른 사람과 비교하면 내 자신이 초라해 보인다",
+        "사람들은 믿을 게 못 된다", "어려운 처지의 사람을 보면 돕고 싶다", "나는 내 삶을 주도적으로 이끌어갈 힘이 있다", "작은 잘못에도 자책을 많이 하는 편이다",
+        "남들은 나를 이용하려고만 하는 것 같다", "대부분의 사람은 선한 마음을 가지고 있다", "나는 나 자신을 충분히 사랑한다", "남들이 나를 어떻게 생각할지 늘 불안하다",
+        "사람들이 하는 말에는 뼈가 있다고 생각한다", "누구와도 금방 친해질 수 있다", "내 미래는 밝고 희망적이다", "나에게는 좋은 일이 일어나지 않을 것 같다",
+        "세상은 믿을 놈 하나 없는 곳이다", "타인의 의견을 존중하고 수용한다", "나는 어려움을 극복할 지혜가 있다", "내가 하는 일은 항상 엉망인 것 같다",
+        "사람들은 실수를 하면 비난받아야 마땅하다", "다른 사람의 행복을 진심으로 축하해준다", "나는 내 감정을 솔직하게 표현할 줄 안다", "나는 늘 누군가에게 의지하고 싶다",
+        "사람들이 나를 비웃는 것 같아 불쾌하다", "세상은 살만한 가치가 있는 곳이다", "나에게는 소중한 꿈과 목표가 있다", "나는 왜 이 모양일까 하는 생각을 자주 한다",
+        "사람들의 친절에는 대개 의도가 숨어 있다", "타인은 나에게 소중한 존재들이다", "나는 지금 이대로의 내가 좋다", "내가 없어도 세상은 아무 지장 없을 것이다",
+        "사람들은 엄하게 다스려야 질서가 잡힌다", "주변 사람들과 깊은 유대감을 느낀다", "나는 내 선택에 대해 책임을 질 수 있다", "가끔 죽고 싶다는 생각이 들 정도로 힘들다"
+    ];
+
+    let currentQ = 0;
+    let selectedMode = 40;
+    let userAnswers = [];
+
+    window.onload = () => {
+        const attach = (id, fn) => {
+            const el = document.getElementById(id);
+            if(el) {
+                el.addEventListener('click', fn);
+                el.addEventListener('touchstart', (e) => { fn(e); }, {passive: true});
+            }
+        };
+        attach('startBtn', startExam);
+        attach('nextBtn', nextQuestion);
+        attach('copyBtn', copyToClipboard);
+    };
+
+    function startExam() {
+        const name = document.getElementById('u_name').value.trim();
+        if(!name) { alert("성함을 입력해 주세요."); return; }
+        selectedMode = parseInt(document.getElementById('exam_mode').value);
+        currentQ = 0;
+        userAnswers = [];
+        goStep(2);
+        showQuestion();
+    }
+
+    function showQuestion() {
+        const container = document.getElementById('questionContainer');
+        const qs = selectedMode === 50 ? questions50 : questions40;
+        const progress = ((currentQ) / selectedMode) * 100;
+        document.getElementById('progress-bar').style.width = progress + "%";
+
+        container.innerHTML = `
+            <div class="q-card">
+                <div style="font-size:0.8em; color:var(--primary); margin-bottom:5px;">문항 ${currentQ + 1} / ${selectedMode}</div>
+                <div class="q-text">${qs[currentQ]}</div>
+                <div class="options">
+                    <label><input type="radio" name="q" value="1">전혀<br>아니다</label>
+                    <label><input type="radio" name="q" value="2">아니다</label>
+                    <label><input type="radio" name="q" value="3">보통이다</label>
+                    <label><input type="radio" name="q" value="4">그렇다</label>
+                    <label><input type="radio" name="q" value="5">매우<br>그렇다</label>
+                </div>
+            </div>
+        `;
+    }
+
+    function nextQuestion() {
+        const sel = document.querySelector('input[name="q"]:checked');
+        if(!sel) { alert("문항에 응답해 주세요."); return; }
+        userAnswers.push(parseInt(sel.value));
+        currentQ++;
+        if(currentQ < selectedMode) {
+            showQuestion();
+        } else {
+            finishExam();
+        }
+    }
+
+    function finishExam() {
+        document.getElementById('progress-bar').style.width = "100%";
+        
+        let scores = {};
+        if(selectedMode === 50) {
+            scores = { CP: 0, NP: 0, A: 0, FC: 0, AC: 0 };
+            const keys = { CP: [1,6,11,16,21,26,31,36,41,46], NP: [2,7,12,17,22,27,32,37,42,47], A: [3,8,13,18,23,28,33,38,43,48], FC: [4,9,14,19,24,29,34,39,44,49], AC: [5,10,15,20,25,30,35,40,45,50] };
+            for(let k in keys) { keys[k].forEach(idx => { scores[k] += userAnswers[idx-1]; }); }
+        } else {
+            // 요청하신 I+, I-, U+, U- 약어 적용
+            scores = { "U-": 0, "U+": 0, "I+": 0, "I-": 0 };
+            const keys = { 
+                "U-": [1,5,9,13,17,21,25,29,33,37], // 타인부정
+                "U+": [2,6,10,14,18,22,26,30,34,38], // 타인긍정
+                "I+": [3,7,11,15,19,23,27,31,35,39], // 자기긍정
+                "I-": [4,8,12,16,20,24,28,32,36,40]  // 자기부정
+            };
+            for(let k in keys) { keys[k].forEach(idx => { scores[k] += userAnswers[idx-1]; }); }
+        }
+
+        const data = {
+            n: document.getElementById('u_name').value,
+            a: document.getElementById('u_age').value,
+            g: document.getElementById('u_gender').value,
+            t: document.getElementById('u_tel').value,
+            d: new Date().toLocaleDateString(),
+            s: scores,
+            type: selectedMode === 50 ? "EGO" : "LP"
+        };
+
+        const code = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+        document.getElementById('resCode').value = code;
+        goStep(3);
+    }
+
+    function goStep(n) {
+        document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+        document.getElementById('step' + n).classList.add('active');
+        window.scrollTo(0,0);
+    }
+
+    function copyToClipboard() {
+        const area = document.getElementById('resCode');
+        area.select();
+        document.execCommand('copy');
+        document.getElementById('copyMsg').style.display = 'block';
+    }
+</script>
+</body>
+</html>
